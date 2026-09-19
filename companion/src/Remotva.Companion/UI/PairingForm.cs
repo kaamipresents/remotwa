@@ -36,6 +36,8 @@ public class PairingForm : Form
         Size = new Size(380, 520);
         FormBorderStyle = FormBorderStyle.FixedDialog;
         StartPosition = FormStartPosition.CenterScreen;
+        ShowInTaskbar = true;
+        TopMost = true;
         MaximizeBox = false;
         MinimizeBox = false;
         BackColor = Color.FromArgb(24, 24, 27);

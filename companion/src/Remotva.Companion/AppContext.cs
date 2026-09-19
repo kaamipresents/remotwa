@@ -62,10 +62,19 @@ public class AppContext : ApplicationContext
         _ = _bleHost.StartAsync();
         _ = _mediaController.InitializeAsync();
 
-        if (args.Contains("--start-pairing"))
+        // Automatically show pairing window if requested or if no paired devices exist
+        bool shouldShowPairing = args.Contains("--start-pairing") || _tokenStore.GetAll().Count == 0;
+        if (shouldShowPairing)
         {
             _pairingManager.StartNewSession();
-            ShowPairingDialog();
+            var showTimer = new System.Windows.Forms.Timer { Interval = 250 };
+            showTimer.Tick += (s, e) =>
+            {
+                showTimer.Stop();
+                showTimer.Dispose();
+                ShowPairingDialog();
+            };
+            showTimer.Start();
         }
 
         // 6. Setup Tray Menu & NotifyIcon
@@ -129,12 +138,12 @@ public class AppContext : ApplicationContext
         if (_activePairingForm == null || _activePairingForm.IsDisposed)
         {
             _activePairingForm = new PairingForm(_pairingManager, _wsHost.Port);
-            _activePairingForm.Show();
         }
-        else
-        {
-            _activePairingForm.BringToFront();
-        }
+
+        _activePairingForm.WindowState = FormWindowState.Normal;
+        _activePairingForm.Show();
+        _activePairingForm.Activate();
+        _activePairingForm.BringToFront();
     }
 
     private void ShowSettingsDialog()
@@ -142,12 +151,12 @@ public class AppContext : ApplicationContext
         if (_activeSettingsForm == null || _activeSettingsForm.IsDisposed)
         {
             _activeSettingsForm = new SettingsForm(_tokenStore, _wsHost.Port);
-            _activeSettingsForm.Show();
         }
-        else
-        {
-            _activeSettingsForm.BringToFront();
-        }
+
+        _activeSettingsForm.WindowState = FormWindowState.Normal;
+        _activeSettingsForm.Show();
+        _activeSettingsForm.Activate();
+        _activeSettingsForm.BringToFront();
     }
 
     private void ExitApplication()
