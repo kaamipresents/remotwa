@@ -6,12 +6,23 @@ namespace Remotva.Companion;
 
 static class Program
 {
-    private const string AppMutexName = "Global\\RemotvaCompanion_SingleInstance_Mutex";
+    private const string AppMutexName = "Local\\RemotvaCompanion_SingleInstance_Mutex";
 
     [STAThread]
     static void Main(string[] args)
     {
-        using var mutex = new Mutex(true, AppMutexName, out bool createdNew);
+        Mutex? mutex = null;
+        bool createdNew = true;
+
+        try
+        {
+            mutex = new Mutex(true, AppMutexName, out createdNew);
+        }
+        catch
+        {
+            createdNew = true;
+        }
+
         if (!createdNew)
         {
             MessageBox.Show("Remotva Companion is already running in the system tray.", "Remotva", MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -20,5 +31,7 @@ static class Program
 
         ApplicationConfiguration.Initialize();
         Application.Run(new AppContext(args));
+
+        mutex?.Dispose();
     }    
 }
