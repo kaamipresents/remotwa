@@ -65,6 +65,7 @@ public class AppContext : ApplicationContext
         if (args.Contains("--start-pairing"))
         {
             _pairingManager.StartNewSession();
+            ShowPairingDialog();
         }
 
         // 6. Setup Tray Menu & NotifyIcon
