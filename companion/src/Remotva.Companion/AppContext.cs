@@ -25,6 +25,7 @@ public class AppContext : ApplicationContext
     private readonly ProtocolEngine _protocolEngine;
     private readonly WsHost _wsHost;
     private readonly BleHost _bleHost;
+    private readonly NetworkChecker _networkChecker;
 
     private PairingForm? _activePairingForm;
     private SettingsForm? _activeSettingsForm;
@@ -89,6 +90,13 @@ public class AppContext : ApplicationContext
         };
 
         _trayIcon.DoubleClick += (s, e) => ShowPairingDialog();
+
+        // 7. Non-blocking Network Profile Check (Warns if active network is Public)
+        _networkChecker = new NetworkChecker(msg =>
+        {
+            _trayIcon.ShowBalloonTip(5000, "Remotva Network Warning", msg, ToolTipIcon.Warning);
+        });
+        _networkChecker.CheckNetworkProfileAsync();
     }
 
     private async Task OnSerializedAudioEventAsync(AudioEvent ev)
@@ -146,6 +154,7 @@ public class AppContext : ApplicationContext
         _trayIcon.Visible = false;
         _trayIcon.Dispose();
 
+        _networkChecker.Dispose();
         _bleHost.Dispose();
         _wsHost.Dispose();
         _eventChannel.Dispose();

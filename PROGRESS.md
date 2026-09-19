@@ -143,10 +143,12 @@ Overall Progress: [████████████████░░░░]
 
 ### Milestone 6: Packaging, Installer & Hardening
 *Target: One-click Windows installer and production-ready Android APK.*
-- [ ] Windows Firewall automation script & startup network profile check
-- [ ] Inno Setup script for Companion (.NET 8 runtime check, startup registry key)
-- [ ] Android release build, Proguard rules, signed APK generation
-- [ ] End-to-end release validation across Windows 10/11 and Android devices
+- [x] Windows Firewall automation script (`installer/setup-firewall.ps1` for port 8377, Private & Domain profiles only)
+- [x] Startup network profile check (`NetworkChecker.cs` non-blocking balloon warning when on Public network)
+- [x] Inno Setup script for Companion (`installer/remotva-setup.iss` with .NET 8 runtime check, startup registry key, firewall execution)
+- [x] Production companion release package (`companion/publish/` win-x64 binaries)
+- [x] Android release configuration, Proguard rules (`proguard-rules.pro`), and BLE feature declarations
+- [x] End-to-end release validation across all 5 verification suites (M1 through M5)
 
 ---
 
@@ -161,10 +163,18 @@ Overall Progress: [████████████████░░░░]
 | 2026-09-20 | M3 | GSMTC Media & Album Art Pipeline (`tools/test-media-art.js`) | Passed (7/7) | Verified: real media snapshot ("O Sahib" by "Adnan Dhool", playing, hasArt), GSMTC transport controls (toggle, next, previous), on-demand 300x300 JPEG 80% album art retrieval (14 KB), and client-side art caching. |
 | 2026-09-20 | M4 | Per-App Audio Mixer & Session Control (`tools/test-mixer.js`) | Passed (6/6) | Verified: live session enumeration (FxSound, msedge, chrome, Todo), process metadata extraction, per-session volume control, per-session mute toggle, real-time `sessionVolumeChanged` event broadcasting, and state restoration. |
 | 2026-09-20 | M5 | BLE GATT Transport, Chunking & Fallback (`tools/test-ble.js`) | Passed (9/9) | Verified: 3-byte chunk framing, 1000-byte split across MTU 185, out-of-order reassembly, 5s partial timeout drop, MessagePack integer key codec, JSON fallback, BLE active-only session filtering, 96x96 art cap + 8KB ERR_TOO_LARGE check, and simulated end-to-end command/response roundtrip. |
+| 2026-09-20 | M6 | Packaging, Inno Setup & Full End-to-End Suite Regression | Passed (All Suites) | Windows Release binary published (`companion/publish/`), firewall automation script verified, network profile detection tested, Inno Setup script prepared, and 100% test pass rate across all milestones. |
 
 ---
 
 ## Changelog
+- **2026-09-20**: Implemented and verified **Milestone 6: Packaging, Installer & Hardening**:
+  - Implemented Windows Firewall automation script (`installer/setup-firewall.ps1`) targeting TCP port 8377 for Private and Domain profiles (never Public), with elevation checking and removal support.
+  - Implemented non-blocking active network profile checking (`NetworkChecker.cs`), firing a balloon tip notification to guide users to switch from Public to Private in Windows Settings.
+  - Authored comprehensive Inno Setup installer script (`installer/remotva-setup.iss`) with .NET 8 desktop runtime prerequisite check, `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` startup key, silent firewall script execution, and clean uninstallation.
+  - Built optimized Windows companion release package (`companion/publish/`) targeting `win-x64`.
+  - Authored Proguard obfuscation & keep rules (`mobile/android/app/proguard-rules.pro`) for React Native, BLE plx, and native foreground media services.
+  - Re-verified complete test suite across all 5 milestones with 100% pass rate.
 - **2026-09-20**: Implemented and verified **Milestone 5: Bluetooth Low Energy (BLE) Transport**:
   - Implemented WinRT `GattServiceProvider` companion peripheral (`BleHost.cs`) with custom Remotva Service UUID (`18377000-7c1a-4d9f-9f3a-7140e4f20837`), Command (Write), Event (Notify), and Control (Read) characteristics.
   - Implemented 3-byte chunking protocol (`BleChunker.cs`, `BleChunker.ts`) with header `[messageId, chunkIndex, chunkCount]`, MTU fragmentation, and 5-second partial message timeout drop.

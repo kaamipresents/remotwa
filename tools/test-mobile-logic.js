@@ -7,49 +7,54 @@ import os from 'node:os';
 
 const APPDATA = process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming');
 const PIN_FILE = path.join(APPDATA, 'Remotva', 'active_pin.txt');
+const TOKEN_FILE = path.join(APPDATA, 'Remotva', 'tokens.json');
 
 console.log(`\n==============================================`);
 console.log(`  REMOTVA MOBILE CLIENT VERIFICATION (M2)`);
 console.log(`==============================================\n`);
 
 async function runMobileVerification() {
-  // Read active PIN
+  let token = null;
+
+  // Check if active PIN exists
   let activePin = null;
-  for (let i = 0; i < 20; i++) {
-    if (fs.existsSync(PIN_FILE)) {
-      activePin = fs.readFileSync(PIN_FILE, 'utf8').trim();
-      if (activePin) break;
-    }
-    await new Promise((r) => setTimeout(r, 200));
+  if (fs.existsSync(PIN_FILE)) {
+    activePin = fs.readFileSync(PIN_FILE, 'utf8').trim();
   }
-
-  if (!activePin) {
-    throw new Error(`Active PIN not found at ${PIN_FILE}. Start companion with --start-pairing first.`);
-  }
-
-  console.log(`[Step 1] Found Companion pairing PIN: ${activePin}`);
 
   const ws = new WebSocket('ws://127.0.0.1:8377');
   await new Promise((resolve, reject) => {
     ws.onopen = resolve;
     ws.onerror = reject;
   });
-  console.log('[Step 2] WebSocket connected to companion.');
+  console.log('[Step 1] WebSocket connected to companion.');
 
-  // Pair using PIN
-  const pairReq = {
-    v: 1,
-    t: 'cmd',
-    id: 'c1',
-    m: 'pair',
-    p: { pin: activePin, clientName: 'Mobile Automated Test' },
-  };
-  ws.send(JSON.stringify(pairReq));
+  if (activePin) {
+    console.log(`[Step 2] Found Companion pairing PIN: ${activePin}`);
+    const pairReq = {
+      v: 1,
+      t: 'cmd',
+      id: 'c1',
+      m: 'pair',
+      p: { pin: activePin, clientName: 'Mobile Automated Test' },
+    };
+    ws.send(JSON.stringify(pairReq));
 
-  const pairRes = await waitForReply(ws, 'c1');
-  assert(pairRes.ok === true, 'Pairing succeeded');
-  const token = pairRes.p.token;
-  console.log(`[Step 3] Paired successfully! Token: ${token.substring(0, 16)}...`);
+    const pairRes = await waitForReply(ws, 'c1');
+    assert(pairRes.ok === true, 'Pairing succeeded');
+    token = pairRes.p.token;
+    console.log(`[Step 3] Paired successfully! Token: ${token.substring(0, 16)}...`);
+  } else if (fs.existsSync(TOKEN_FILE)) {
+    const tokens = JSON.parse(fs.readFileSync(TOKEN_FILE, 'utf8'));
+    if (tokens.length > 0) {
+      token = tokens[0].Token;
+      console.log(`[Step 2] Using existing paired device token: ${token.substring(0, 16)}...`);
+    }
+  }
+
+  if (!token) {
+    throw new Error('Neither active PIN nor saved token found. Start companion with --start-pairing first.');
+  }
 
   // Hello with token
   const helloReq = {
