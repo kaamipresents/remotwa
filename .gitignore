@@ -21,3 +21,10 @@ active_pin.txt
 publish/
 *.pdb
 
+# Android
+.gradle/
+**/build/
+local.properties
+*.keystore
+!debug.keystore
+

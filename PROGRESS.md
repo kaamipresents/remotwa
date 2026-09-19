@@ -8,7 +8,7 @@ Current Stage: **Planning & Architecture Alignment**
 ## Progress Dashboard
 
 ```
-Overall Progress: [████████████████░░░░] 80% (Milestones 0, 1, 2, 3 & 4 Complete)
+Overall Progress: [████████████████████] 100% (Milestones 0–6 Complete + APK Built)
 ```
 
 | Milestone | Description | Status | Progress | Target Completion |
@@ -18,8 +18,8 @@ Overall Progress: [████████████████░░░░]
 | **M2: Android App (Wi-Fi)** | Bare RN, Discovery, Pairing, Player Tab, Reconnect | 🟢 Completed | 100% | 2026-09-19 |
 | **M3: Media & Album Art** | Live GSMTC Sync, 300x300 Art Cache, FG Service | 🟢 Completed | 100% | 2026-09-19 |
 | **M4: Per-App Mixer** | Core Audio Sessions, Live Session Evts, Mixer Screen | 🟢 Completed | 100% | 2026-09-20 |
-| **M5: Bluetooth LE** | WinRT BLE Peripheral, RN BLE Central, Chunking | ⚪ Next Up | 0% | TBD |
-| **M6: Packaging & Installer**| Inno Setup, Windows Firewall rule, Release APK | ⚪ Pending | 0% | TBD |
+| **M5: Bluetooth LE** | WinRT BLE Peripheral, RN BLE Central, Chunking | 🟢 Completed | 100% | 2026-09-20 |
+| **M6: Packaging & Installer**| Inno Setup, Windows Firewall rule, Release APK | 🟢 Completed | 100% | 2026-09-20 |
 
 ---
 
