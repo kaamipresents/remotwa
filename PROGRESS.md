@@ -8,7 +8,7 @@ Current Stage: **Planning & Architecture Alignment**
 ## Progress Dashboard
 
 ```
-Overall Progress: [████████░░░░░░░░░░░░] 40% (Milestones 0, 1 & 2 Complete)
+Overall Progress: [████████████░░░░░░░░] 60% (Milestones 0, 1, 2 & 3 Complete)
 ```
 
 | Milestone | Description | Status | Progress | Target Completion |
@@ -16,8 +16,8 @@ Overall Progress: [████████░░░░░░░░░░░░]
 | **M0: Planning & Setup** | Spec review, architecture, PLAN.md, PROGRESS.md | 🟢 Completed | 100% | 2026-09-19 |
 | **M1: Companion Core** | .NET 8 Tray, Core Audio, GSMTC, WS Server, Test Client | 🟢 Completed | 100% | 2026-09-19 |
 | **M2: Android App (Wi-Fi)** | Bare RN, Discovery, Pairing, Player Tab, Reconnect | 🟢 Completed | 100% | 2026-09-19 |
-| **M3: Media & Album Art** | Live GSMTC Sync, 300x300 Art Cache, FG Service | ⚪ Next Up | 0% | TBD |
-| **M4: Per-App Mixer** | Core Audio Sessions, Live Session Evts, Mixer Screen | ⚪ Pending | 0% | TBD |
+| **M3: Media & Album Art** | Live GSMTC Sync, 300x300 Art Cache, FG Service | 🟢 Completed | 100% | 2026-09-19 |
+| **M4: Per-App Mixer** | Core Audio Sessions, Live Session Evts, Mixer Screen | ⚪ Next Up | 0% | TBD |
 | **M5: Bluetooth LE** | WinRT BLE Peripheral, RN BLE Central, Chunking | ⚪ Pending | 0% | TBD |
 | **M6: Packaging & Installer**| Inno Setup, Windows Firewall rule, Release APK | ⚪ Pending | 0% | TBD |
 
@@ -102,12 +102,12 @@ Overall Progress: [████████░░░░░░░░░░░░]
 
 ### Milestone 3: Now Playing & Album Art Integration
 *Target: Real-time track syncing, album art caching, lockscreen/notification controls.*
-- [ ] GSMTC Event Pipeline integration and validation with Spotify, Chrome, VLC
-- [ ] On-demand album art fetcher and disk/memory cache on mobile
-- [ ] Android Foreground Service (`services/ForegroundService.ts`)
-  - [ ] Persistent notification with current track, artist, play/pause action
-  - [ ] Keep-alive background socket protection against Android Doze mode
-- [ ] Physical volume button handling (opt-in hook)
+- [x] GSMTC Event Pipeline integration and validation with Spotify, Chrome, VLC
+- [x] On-demand album art fetcher and memory/disk cache on mobile (`AlbumArtStorage.ts`)
+- [x] Android Foreground Service (`services/ForegroundService.ts`, `RemotvaMediaService.kt`)
+  - [x] Persistent notification with current track, artist, play/pause action
+  - [x] Keep-alive background socket protection against Android Doze mode
+- [x] Physical volume button handling (`useVolumeKeys.ts` and `adjustVolume` hook)
 
 ---
 
@@ -155,10 +155,17 @@ Overall Progress: [████████░░░░░░░░░░░░]
 | 2026-09-19 | M0 | Architecture Plan & Spec Alignment | Complete | `PLAN.md` and `PROGRESS.md` created |
 | 2026-09-19 | M1 | Automated WebSocket test suite (`tools/test-client.js`) | Passed (10/10) | Verified: ping, ERR_AUTH on unauth, invalid PIN lockout check, 6-digit PIN pairing, 32-byte token auth, getState snapshot, setVolume, volumeChanged event broadcast, setMute, adjustVolume, getSessions enumeration, volume cleanup. |
 | 2026-09-19 | M2 | Mobile Client Integration & Throttling (`tools/test-mobile-logic.js`) | Passed (7/7) | Verified: active PIN pairing exchange, authenticated hello, state snapshot parsing, 50ms slider drag throttling verification (10 fast ticks filtered down to 3 wire sends), and master volume restoration. |
+| 2026-09-20 | M3 | GSMTC Media & Album Art Pipeline (`tools/test-media-art.js`) | Passed (7/7) | Verified: real media snapshot ("O Sahib" by "Adnan Dhool", playing, hasArt), GSMTC transport controls (toggle, next, previous), on-demand 300x300 JPEG 80% album art retrieval (14 KB), and client-side art caching. |
 
 ---
 
 ## Changelog
+- **2026-09-20**: Implemented and verified **Milestone 3: Now Playing & Album Art Integration**:
+  - Live WinRT GSMTC integration tracking media state across players (Spotify, Chrome, VLC) with event-driven notifications (`MediaPropertiesChanged`, `PlaybackInfoChanged`).
+  - On-demand album art pipeline resizing GSMTC thumbnail stream to 300×300 JPEG (80% quality) and caching by SHA256 track hash.
+  - Client-side on-demand fetching and local disk/memory cache (`AlbumArtStorage.ts`).
+  - Built Android Native Foreground Service (`RemotvaMediaService.kt`, `RemotvaMediaModule.kt`, `RemotvaPackage.kt`) with media playback controls on the notification and lockscreen to prevent Android Doze socket termination.
+  - Verified transport commands (`toggle`, `next`, `previous`) and live album art fetching via `tools/test-media-art.js`.
 - **2026-09-19**: Implemented and verified **Milestone 2: Android App Foundation & Wi-Fi Client**:
   - Scaffolding React Native bare workflow project (`mobile/`) with TypeScript, bottom tabs (`Player`, `Mixer`, `Settings`), and modal stack navigation (`Devices`, `Pairing`).
   - Implemented `ProtocolClient` and `WsTransport` with exponential backoff reconnection (500ms to 10s).
