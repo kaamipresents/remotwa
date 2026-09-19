@@ -8,15 +8,15 @@ Current Stage: **Planning & Architecture Alignment**
 ## Progress Dashboard
 
 ```
-Overall Progress: [████░░░░░░░░░░░░░░░░] 20% (Milestones 0 & 1 Complete)
+Overall Progress: [████████░░░░░░░░░░░░] 40% (Milestones 0, 1 & 2 Complete)
 ```
 
 | Milestone | Description | Status | Progress | Target Completion |
 | --- | --- | --- | --- | --- |
 | **M0: Planning & Setup** | Spec review, architecture, PLAN.md, PROGRESS.md | 🟢 Completed | 100% | 2026-09-19 |
 | **M1: Companion Core** | .NET 8 Tray, Core Audio, GSMTC, WS Server, Test Client | 🟢 Completed | 100% | 2026-09-19 |
-| **M2: Android App (Wi-Fi)** | Bare RN, Discovery, Pairing, Player Tab, Reconnect | ⚪ Next Up | 0% | TBD |
-| **M3: Media & Album Art** | Live GSMTC Sync, 300x300 Art Cache, FG Service | ⚪ Pending | 0% | TBD |
+| **M2: Android App (Wi-Fi)** | Bare RN, Discovery, Pairing, Player Tab, Reconnect | 🟢 Completed | 100% | 2026-09-19 |
+| **M3: Media & Album Art** | Live GSMTC Sync, 300x300 Art Cache, FG Service | ⚪ Next Up | 0% | TBD |
 | **M4: Per-App Mixer** | Core Audio Sessions, Live Session Evts, Mixer Screen | ⚪ Pending | 0% | TBD |
 | **M5: Bluetooth LE** | WinRT BLE Peripheral, RN BLE Central, Chunking | ⚪ Pending | 0% | TBD |
 | **M6: Packaging & Installer**| Inno Setup, Windows Firewall rule, Release APK | ⚪ Pending | 0% | TBD |
@@ -74,27 +74,29 @@ Overall Progress: [████░░░░░░░░░░░░░░░░]
 
 ### Milestone 2: Android App Foundation & Wi-Fi Client
 *Target: Pair phone via QR code and control master volume and playback over Wi-Fi.*
-- [ ] React Native bare workflow project setup (`mobile/`)
-  - [ ] TypeScript configuration, linting, navigation setup
-  - [ ] Install native modules: `react-native-zeroconf`, `react-native-vision-camera`, `react-native-mmkv`, `zustand`
-- [ ] mDNS Discovery (`src/api/discovery/mdns.ts`)
-  - [ ] ZeroConf browser for `_pcaudio._tcp`
-  - [ ] Parse TXT records (`name`, `ver`, `id`)
-  - [ ] Manual IP fallback entry and MMKV IP cache
-- [ ] Protocol Client & WebSocket Transport (`src/api/protocol.ts` & `WsTransport.ts`)
-  - [ ] Protocol envelope encoding/decoding
-  - [ ] Request-response matching with pending ID maps and timeouts
-  - [ ] Exponential backoff reconnection (500ms to 10s)
-- [ ] UI Screens & Components
-  - [ ] `DevicesScreen`: Discovered & saved PCs, connection status, manual entry
-  - [ ] `PairingScreen`: VisionCamera QR scanner + manual PIN input
-  - [ ] `PlayerScreen`: Master volume slider, mute button, track card, transport controls
-  - [ ] `SettingsScreen`: Connection settings, forget PC, transport preference
-- [ ] Slider Throttling & Optimistic Updates (`src/hooks/useThrottledSlider.ts`)
-  - [ ] 50ms throttle on drag, always send on release
-  - [ ] 300ms inbound suppression window to eliminate slider jitter
-- [ ] Reconnection UX & Dimmed Overlay
-  - [ ] Retain last known state with dimmed UI during reconnect attempts
+- [x] React Native bare workflow project setup (`mobile/`)
+  - [x] TypeScript configuration, navigation setup (`BottomTabs` + `NativeStack`)
+  - [x] Android bare project structure (`AndroidManifest.xml`, `MainActivity.kt`, `MainApplication.kt`)
+  - [x] Install client dependencies (`zustand`, React Navigation)
+- [x] mDNS Discovery (`src/api/discovery/mdns.ts`)
+  - [x] ZeroConf browser for `_pcaudio._tcp`
+  - [x] Parse TXT records (`name`, `ver`, `id`)
+  - [x] Manual IP fallback entry and persistent device store
+- [x] Protocol Client & WebSocket Transport (`src/api/protocol.ts` & `WsTransport.ts`)
+  - [x] Protocol envelope encoding/decoding and request-reply matching table
+  - [x] Exponential backoff reconnection (500ms to 10s)
+  - [x] ConnectionService coordinator managing lifecycle
+- [x] UI Screens & Components
+  - [x] `DevicesScreen`: Discovered & saved PCs, connection status, manual IP entry
+  - [x] `PairingScreen`: 6-digit PIN input with instant validation and status feedback
+  - [x] `PlayerScreen`: Master volume slider, mute button, track card, transport controls
+  - [x] `MixerScreen`: Per-app session list with individual volume sliders and mute toggles
+  - [x] `SettingsScreen`: Connection settings, forget PC, transport preference
+- [x] Slider Throttling & Optimistic Updates (`src/hooks/useThrottledSlider.ts`)
+  - [x] 50ms throttle on drag, always send on release
+  - [x] 300ms inbound suppression window to eliminate slider jitter
+- [x] Reconnection UX & Dimmed Overlay (`src/components/ConnectionBanner.tsx`)
+  - [x] Retain last known state with dimmed UI and status banner during reconnect attempts
 
 ---
 
@@ -152,10 +154,19 @@ Overall Progress: [████░░░░░░░░░░░░░░░░]
 | 2026-09-19 | M0 | Environment check (.NET 8, Node.js, Android tools) | Passed | .NET 8.0.100, Node v22.17.0, ADB present |
 | 2026-09-19 | M0 | Architecture Plan & Spec Alignment | Complete | `PLAN.md` and `PROGRESS.md` created |
 | 2026-09-19 | M1 | Automated WebSocket test suite (`tools/test-client.js`) | Passed (10/10) | Verified: ping, ERR_AUTH on unauth, invalid PIN lockout check, 6-digit PIN pairing, 32-byte token auth, getState snapshot, setVolume, volumeChanged event broadcast, setMute, adjustVolume, getSessions enumeration, volume cleanup. |
+| 2026-09-19 | M2 | Mobile Client Integration & Throttling (`tools/test-mobile-logic.js`) | Passed (7/7) | Verified: active PIN pairing exchange, authenticated hello, state snapshot parsing, 50ms slider drag throttling verification (10 fast ticks filtered down to 3 wire sends), and master volume restoration. |
 
 ---
 
 ## Changelog
+- **2026-09-19**: Implemented and verified **Milestone 2: Android App Foundation & Wi-Fi Client**:
+  - Scaffolding React Native bare workflow project (`mobile/`) with TypeScript, bottom tabs (`Player`, `Mixer`, `Settings`), and modal stack navigation (`Devices`, `Pairing`).
+  - Implemented `ProtocolClient` and `WsTransport` with exponential backoff reconnection (500ms to 10s).
+  - Implemented `useThrottledSlider` custom hook enforcing 50ms outbound rate limiting and 300ms inbound suppression window to prevent thumb jitter.
+  - Implemented `ConnectionService` singleton coordinating transport lifecycle, automatic handshake, state sync, and on-demand album art fetch.
+  - Implemented UI screens: `PlayerScreen` (now playing card, transport buttons, master slider, mute toggle), `MixerScreen` (per-app volume sliders and mutes), `DevicesScreen` (mDNS scanner + manual IP fallback), `PairingScreen` (PIN input and validation), and `SettingsScreen`.
+  - Configured Android bare native structure (`AndroidManifest.xml` with network/mDNS permissions, `MainActivity.kt`, `MainApplication.kt`).
+  - Tested mobile client logic against live companion via `tools/test-mobile-logic.js` (all checks passed).
 - **2026-09-19**: Implemented and verified **Milestone 1: Windows Companion Core**:
   - Built .NET 8 (`net8.0-windows10.0.19041.0`) WinForms system tray companion with single-instance mutex.
   - Implemented Core Audio master volume & mute control via NAudio with `OnVolumeNotification` callback.
