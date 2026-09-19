@@ -1,7 +1,7 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
 using NAudio.CoreAudioApi;
 using NAudio.CoreAudioApi.Interfaces;
 using Remotva.Companion.Protocol;
@@ -15,6 +15,7 @@ public class SessionManager : IDisposable
     private MMDevice? _defaultPlaybackDevice;
     private AudioSessionManager? _sessionManager;
     private readonly Action<AudioEvent> _eventDispatcher;
+    private readonly ConcurrentDictionary<uint, IAudioSessionEventsHandler> _registeredHandlers = new();
     private readonly object _lock = new();
     private bool _disposed;
 
@@ -31,19 +32,14 @@ public class SessionManager : IDisposable
         {
             try
             {
-                if (_sessionManager != null)
-                {
-                    _sessionManager.OnSessionCreated -= SessionManager_OnSessionCreated;
-                    _sessionManager.Dispose();
-                    _sessionManager = null;
-                }
+                CleanupCurrentSessionManager();
 
-                _defaultPlaybackDevice?.Dispose();
                 _defaultPlaybackDevice = _deviceEnumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
                 if (_defaultPlaybackDevice != null)
                 {
                     _sessionManager = _defaultPlaybackDevice.AudioSessionManager;
                     _sessionManager.OnSessionCreated += SessionManager_OnSessionCreated;
+                    RegisterAllExistingSessions();
                 }
             }
             catch (Exception ex)
@@ -55,8 +51,51 @@ public class SessionManager : IDisposable
 
     private void SessionManager_OnSessionCreated(object? sender, IAudioSessionControl newSession)
     {
-        // A new session was created -> notify clients of session list changes
+        try
+        {
+            var control = new AudioSessionControl(newSession);
+            RegisterSessionCallback(control);
+        }
+        catch { }
         _eventDispatcher(AudioEvent.SessionsChanged(GetSessions()));
+    }
+
+    private void RegisterAllExistingSessions()
+    {
+        if (_sessionManager == null) return;
+
+        try
+        {
+            _sessionManager.RefreshSessions();
+            var sessions = _sessionManager.Sessions;
+            for (int i = 0; i < sessions.Count; i++)
+            {
+                RegisterSessionCallback(sessions[i]);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[SessionManager] Error registering existing sessions: {ex.Message}");
+        }
+    }
+
+    private void RegisterSessionCallback(AudioSessionControl session)
+    {
+        try
+        {
+            uint pid = session.GetProcessID;
+            if (pid == 0 || _registeredHandlers.ContainsKey(pid)) return;
+
+            var handler = new SessionEventHandler(
+                pid,
+                _eventDispatcher,
+                () => _eventDispatcher(AudioEvent.SessionsChanged(GetSessions()))
+            );
+
+            session.RegisterEventClient(handler);
+            _registeredHandlers[pid] = handler;
+        }
+        catch { }
     }
 
     public List<AudioSessionInfo> GetSessions()
@@ -69,12 +108,16 @@ public class SessionManager : IDisposable
                 EnsureSessionManager();
                 if (_sessionManager == null) return result;
 
+                _sessionManager.RefreshSessions();
                 var sessions = _sessionManager.Sessions;
                 for (int i = 0; i < sessions.Count; i++)
                 {
                     var session = sessions[i];
                     uint pid = session.GetProcessID;
                     if (pid == 0) continue; // Skip system sounds / idle session
+
+                    // Ensure callback is registered
+                    RegisterSessionCallback(session);
 
                     string name = GetProcessName(pid, session.DisplayName);
                     float volume = session.SimpleAudioVolume.Volume;
@@ -109,6 +152,7 @@ public class SessionManager : IDisposable
             EnsureSessionManager();
             if (_sessionManager == null) return level;
 
+            _sessionManager.RefreshSessions();
             var sessions = _sessionManager.Sessions;
             for (int i = 0; i < sessions.Count; i++)
             {
@@ -133,6 +177,7 @@ public class SessionManager : IDisposable
             EnsureSessionManager();
             if (_sessionManager == null) return muted;
 
+            _sessionManager.RefreshSessions();
             var sessions = _sessionManager.Sessions;
             for (int i = 0; i < sessions.Count; i++)
             {
@@ -174,6 +219,20 @@ public class SessionManager : IDisposable
         }
     }
 
+    private void CleanupCurrentSessionManager()
+    {
+        _registeredHandlers.Clear();
+        if (_sessionManager != null)
+        {
+            _sessionManager.OnSessionCreated -= SessionManager_OnSessionCreated;
+            _sessionManager.Dispose();
+            _sessionManager = null;
+        }
+
+        _defaultPlaybackDevice?.Dispose();
+        _defaultPlaybackDevice = null;
+    }
+
     public void Dispose()
     {
         if (_disposed) return;
@@ -183,15 +242,7 @@ public class SessionManager : IDisposable
         {
             try
             {
-                if (_sessionManager != null)
-                {
-                    _sessionManager.OnSessionCreated -= SessionManager_OnSessionCreated;
-                    _sessionManager.Dispose();
-                    _sessionManager = null;
-                }
-
-                _defaultPlaybackDevice?.Dispose();
-                _defaultPlaybackDevice = null;
+                CleanupCurrentSessionManager();
                 _deviceEnumerator.Dispose();
             }
             catch (Exception ex)
@@ -199,5 +250,39 @@ public class SessionManager : IDisposable
                 Console.WriteLine($"[SessionManager] Error disposing: {ex.Message}");
             }
         }
+    }
+
+    private class SessionEventHandler : IAudioSessionEventsHandler
+    {
+        private readonly uint _pid;
+        private readonly Action<AudioEvent> _dispatcher;
+        private readonly Action _onSessionLifecycleChanged;
+
+        public SessionEventHandler(uint pid, Action<AudioEvent> dispatcher, Action onSessionLifecycleChanged)
+        {
+            _pid = pid;
+            _dispatcher = dispatcher;
+            _onSessionLifecycleChanged = onSessionLifecycleChanged;
+        }
+
+        public void OnVolumeChanged(float volume, bool isMuted)
+        {
+            _dispatcher(AudioEvent.SessionVolumeChanged(_pid.ToString(), volume, isMuted));
+        }
+
+        public void OnStateChanged(AudioSessionState state)
+        {
+            _onSessionLifecycleChanged();
+        }
+
+        public void OnSessionDisconnected(AudioSessionDisconnectReason disconnectReason)
+        {
+            _onSessionLifecycleChanged();
+        }
+
+        public void OnDisplayNameChanged(string displayName) { }
+        public void OnIconPathChanged(string iconPath) { }
+        public void OnChannelVolumeChanged(uint channelCount, IntPtr newVolumes, uint channelIndex) { }
+        public void OnGroupingParamChanged(ref Guid groupingId) { }
     }
 }

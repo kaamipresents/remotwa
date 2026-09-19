@@ -8,7 +8,7 @@ Current Stage: **Planning & Architecture Alignment**
 ## Progress Dashboard
 
 ```
-Overall Progress: [████████████░░░░░░░░] 60% (Milestones 0, 1, 2 & 3 Complete)
+Overall Progress: [████████████████░░░░] 80% (Milestones 0, 1, 2, 3 & 4 Complete)
 ```
 
 | Milestone | Description | Status | Progress | Target Completion |
@@ -17,8 +17,8 @@ Overall Progress: [████████████░░░░░░░░]
 | **M1: Companion Core** | .NET 8 Tray, Core Audio, GSMTC, WS Server, Test Client | 🟢 Completed | 100% | 2026-09-19 |
 | **M2: Android App (Wi-Fi)** | Bare RN, Discovery, Pairing, Player Tab, Reconnect | 🟢 Completed | 100% | 2026-09-19 |
 | **M3: Media & Album Art** | Live GSMTC Sync, 300x300 Art Cache, FG Service | 🟢 Completed | 100% | 2026-09-19 |
-| **M4: Per-App Mixer** | Core Audio Sessions, Live Session Evts, Mixer Screen | ⚪ Next Up | 0% | TBD |
-| **M5: Bluetooth LE** | WinRT BLE Peripheral, RN BLE Central, Chunking | ⚪ Pending | 0% | TBD |
+| **M4: Per-App Mixer** | Core Audio Sessions, Live Session Evts, Mixer Screen | 🟢 Completed | 100% | 2026-09-20 |
+| **M5: Bluetooth LE** | WinRT BLE Peripheral, RN BLE Central, Chunking | ⚪ Next Up | 0% | TBD |
 | **M6: Packaging & Installer**| Inno Setup, Windows Firewall rule, Release APK | ⚪ Pending | 0% | TBD |
 
 ---
@@ -113,14 +113,14 @@ Overall Progress: [████████████░░░░░░░░]
 
 ### Milestone 4: Per-App Audio Mixer
 *Target: Per-session volume control and real-time app audio session tracking.*
-- [ ] Core Audio Session Manager on Windows (`Audio/SessionManager.cs`)
-  - [ ] Enumerate `IAudioSessionControl2` and extract process info
-  - [ ] Track session creation and termination via `IAudioSessionNotification`
-  - [ ] Handle per-session volume/mute changes
-- [ ] Protocol handler for `getSessions`, `setSessionVolume`, `setSessionMute`
-- [ ] Android Mixer Screen (`src/screens/MixerScreen.tsx`)
-  - [ ] List displaying session rows (icon, app name, volume slider, mute button)
-  - [ ] Dynamic updates on `sessionsChanged` and `sessionVolumeChanged`
+- [x] Core Audio Session Manager on Windows (`Audio/SessionManager.cs`)
+  - [x] Enumerate `IAudioSessionControl2` and extract process info (`PID`, `Name`, `Volume`, `Muted`, `Active`)
+  - [x] Track session creation and termination via `IAudioSessionNotification.OnSessionCreated`
+  - [x] Handle real-time per-session volume and state changes via `IAudioSessionEventsHandler`
+- [x] Protocol handler for `getSessions`, `setSessionVolume`, `setSessionMute`
+- [x] Android Mixer Screen (`src/screens/MixerScreen.tsx`)
+  - [x] List displaying session rows (app badges, process name, PID, volume slider, mute button)
+  - [x] Dynamic live updates on `sessionsChanged` and `sessionVolumeChanged`
 
 ---
 
@@ -156,10 +156,17 @@ Overall Progress: [████████████░░░░░░░░]
 | 2026-09-19 | M1 | Automated WebSocket test suite (`tools/test-client.js`) | Passed (10/10) | Verified: ping, ERR_AUTH on unauth, invalid PIN lockout check, 6-digit PIN pairing, 32-byte token auth, getState snapshot, setVolume, volumeChanged event broadcast, setMute, adjustVolume, getSessions enumeration, volume cleanup. |
 | 2026-09-19 | M2 | Mobile Client Integration & Throttling (`tools/test-mobile-logic.js`) | Passed (7/7) | Verified: active PIN pairing exchange, authenticated hello, state snapshot parsing, 50ms slider drag throttling verification (10 fast ticks filtered down to 3 wire sends), and master volume restoration. |
 | 2026-09-20 | M3 | GSMTC Media & Album Art Pipeline (`tools/test-media-art.js`) | Passed (7/7) | Verified: real media snapshot ("O Sahib" by "Adnan Dhool", playing, hasArt), GSMTC transport controls (toggle, next, previous), on-demand 300x300 JPEG 80% album art retrieval (14 KB), and client-side art caching. |
+| 2026-09-20 | M4 | Per-App Audio Mixer & Session Control (`tools/test-mixer.js`) | Passed (6/6) | Verified: live session enumeration (FxSound, msedge, chrome, Todo), process metadata extraction, per-session volume control, per-session mute toggle, real-time `sessionVolumeChanged` event broadcasting, and state restoration. |
 
 ---
 
 ## Changelog
+- **2026-09-20**: Implemented and verified **Milestone 4: Per-App Audio Mixer**:
+  - Enhanced Windows companion `SessionManager.cs` to bind `IAudioSessionEventsHandler` to each active Windows audio session, tracking real-time volume, mute state, and process details.
+  - Implemented dynamic session creation and termination tracking via `IAudioSessionNotification.OnSessionCreated`, broadcasting `sessionsChanged` events.
+  - Full support for `getSessions`, `setSessionVolume`, and `setSessionMute` commands with error resilience against exited processes.
+  - Mobile `MixerScreen` with app badges, process names, volume sliders, and mute buttons with live real-time sync.
+  - Verified per-app controls and event broadcasts with live audio apps via `tools/test-mixer.js`.
 - **2026-09-20**: Implemented and verified **Milestone 3: Now Playing & Album Art Integration**:
   - Live WinRT GSMTC integration tracking media state across players (Spotify, Chrome, VLC) with event-driven notifications (`MediaPropertiesChanged`, `PlaybackInfoChanged`).
   - On-demand album art pipeline resizing GSMTC thumbnail stream to 300×300 JPEG (80% quality) and caching by SHA256 track hash.
