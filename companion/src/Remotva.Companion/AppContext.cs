@@ -24,6 +24,7 @@ public class AppContext : ApplicationContext
     private readonly PairingManager _pairingManager;
     private readonly ProtocolEngine _protocolEngine;
     private readonly WsHost _wsHost;
+    private readonly BleHost _bleHost;
 
     private PairingForm? _activePairingForm;
     private SettingsForm? _activeSettingsForm;
@@ -42,7 +43,7 @@ public class AppContext : ApplicationContext
         _tokenStore = new TokenStore();
         _pairingManager = new PairingManager(_tokenStore);
 
-        // 4. Initialize Protocol Engine & WebSocket Host
+        // 4. Initialize Protocol Engine, WebSocket Host, and BLE Host
         _protocolEngine = new ProtocolEngine(
             _audioController,
             _sessionManager,
@@ -52,10 +53,12 @@ public class AppContext : ApplicationContext
         );
 
         _wsHost = new WsHost(_protocolEngine);
+        _bleHost = new BleHost(_protocolEngine);
 
-        // 5. Start Channel consumer and WS server
+        // 5. Start Channel consumer, WS server, and BLE peripheral
         _eventChannel.Start();
         _wsHost.Start();
+        _ = _bleHost.StartAsync();
         _ = _mediaController.InitializeAsync();
 
         if (args.Contains("--start-pairing"))
@@ -105,6 +108,10 @@ public class AppContext : ApplicationContext
         {
             var envelope = ProtocolEnvelope.CreateEvent(eventName, ev.Data);
             await _wsHost.BroadcastEventAsync(envelope);
+            if (_bleHost.IsRunning)
+            {
+                await _bleHost.BroadcastEventAsync(envelope);
+            }
         }
     }
 
@@ -139,6 +146,7 @@ public class AppContext : ApplicationContext
         _trayIcon.Visible = false;
         _trayIcon.Dispose();
 
+        _bleHost.Dispose();
         _wsHost.Dispose();
         _eventChannel.Dispose();
         _mediaController.Dispose();

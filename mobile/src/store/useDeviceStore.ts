@@ -6,11 +6,15 @@ import { create } from 'zustand';
 export interface DeviceInfo {
   id: string; // Stable GUID
   name: string;
-  ip: string;
-  port: number;
+  ip?: string;
+  port?: number;
   token?: string; // 32-byte auth token
   lastConnected?: number;
+  transport?: 'wifi' | 'ble';
+  bleDeviceId?: string;
 }
+
+export type TransportPreference = 'auto' | 'wifi' | 'ble';
 
 export type ConnectionState =
   | 'idle'
@@ -26,10 +30,14 @@ interface DeviceStoreState {
   activeDevice: DeviceInfo | null;
   connectionState: ConnectionState;
   reconnectCount: number;
+  transportPreference: TransportPreference;
+  activeTransportType: 'wifi' | 'ble' | null;
 
   // Actions
   setConnectionState: (state: ConnectionState) => void;
   setActiveDevice: (device: DeviceInfo | null) => void;
+  setTransportPreference: (pref: TransportPreference) => void;
+  setActiveTransportType: (type: 'wifi' | 'ble' | null) => void;
   addDiscoveredDevice: (device: DeviceInfo) => void;
   clearDiscoveredDevices: () => void;
   saveDevice: (device: DeviceInfo) => void;
@@ -45,10 +53,13 @@ export const useDeviceStore = create<DeviceStoreState>((set) => ({
   activeDevice: null,
   connectionState: 'idle',
   reconnectCount: 0,
+  transportPreference: 'auto',
+  activeTransportType: null,
 
   setConnectionState: (state) => set({ connectionState: state }),
-
   setActiveDevice: (device) => set({ activeDevice: device }),
+  setTransportPreference: (transportPreference) => set({ transportPreference }),
+  setActiveTransportType: (activeTransportType) => set({ activeTransportType }),
 
   addDiscoveredDevice: (device) =>
     set((state) => {

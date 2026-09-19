@@ -24,8 +24,10 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
   const connectionState = useDeviceStore((s) => s.connectionState);
   const savedDevices = useDeviceStore((s) => s.savedDevices);
   const forgetDevice = useDeviceStore((s) => s.forgetDevice);
+  const transportPreference = useDeviceStore((s) => s.transportPreference);
+  const setTransportPreference = useDeviceStore((s) => s.setTransportPreference);
+  const activeTransportType = useDeviceStore((s) => s.activeTransportType);
 
-  const [preferBle, setPreferBle] = useState(false);
   const [hardwareVolumeKeys, setHardwareVolumeKeys] = useState(true);
 
   const handleDisconnect = () => {
@@ -67,9 +69,17 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
                 <Text style={styles.rowLabel}>Connected PC</Text>
                 <Text style={styles.rowValue}>{activeDevice.name}</Text>
               </View>
+              {activeDevice.ip && (
+                <View style={styles.row}>
+                  <Text style={styles.rowLabel}>Endpoint</Text>
+                  <Text style={styles.rowValue}>{activeDevice.ip}:{activeDevice.port}</Text>
+                </View>
+              )}
               <View style={styles.row}>
-                <Text style={styles.rowLabel}>Endpoint</Text>
-                <Text style={styles.rowValue}>{activeDevice.ip}:{activeDevice.port}</Text>
+                <Text style={styles.rowLabel}>Active Transport</Text>
+                <Text style={[styles.rowValue, { color: '#38bdf8', fontWeight: 'bold' }]}>
+                  {activeTransportType ? activeTransportType.toUpperCase() : 'N/A'}
+                </Text>
               </View>
               <View style={styles.row}>
                 <Text style={styles.rowLabel}>Status</Text>
@@ -95,21 +105,33 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
         {/* Transport Preferences */}
         <View style={styles.sectionCard}>
           <Text style={styles.sectionHeader}>Transport Preferences</Text>
+          <Text style={styles.switchSub}>
+            Auto prefers Wi-Fi (IP/mDNS) with 3-second timeout and falls back to BLE.
+          </Text>
 
-          <View style={styles.switchRow}>
-            <View style={styles.switchTextCol}>
-              <Text style={styles.switchLabel}>Prefer Bluetooth LE</Text>
-              <Text style={styles.switchSub}>When Wi-Fi and Bluetooth are both available</Text>
-            </View>
-            <Switch
-              value={preferBle}
-              onValueChange={setPreferBle}
-              trackColor={{ false: '#27272a', true: '#3b82f6' }}
-              thumbColor="#ffffff"
-            />
+          <View style={styles.selectorRow}>
+            {(['auto', 'wifi', 'ble'] as const).map((mode) => (
+              <TouchableOpacity
+                key={mode}
+                style={[
+                  styles.selectorBtn,
+                  transportPreference === mode && styles.selectorBtnActive,
+                ]}
+                onPress={() => setTransportPreference(mode)}
+              >
+                <Text
+                  style={[
+                    styles.selectorBtnText,
+                    transportPreference === mode && styles.selectorBtnTextActive,
+                  ]}
+                >
+                  {mode === 'auto' ? 'Auto (Wi-Fi → BLE)' : mode === 'wifi' ? 'Wi-Fi Only' : 'BLE Only'}
+                </Text>
+              </TouchableOpacity>
+            ))}
           </View>
 
-          <View style={[styles.switchRow, { borderTopWidth: 1, borderTopColor: '#27272a', paddingTop: 14 }]}>
+          <View style={[styles.switchRow, { borderTopWidth: 1, borderTopColor: '#27272a', paddingTop: 14, marginTop: 14 }]}>
             <View style={styles.switchTextCol}>
               <Text style={styles.switchLabel}>Hardware Volume Buttons</Text>
               <Text style={styles.switchSub}>Control PC volume with phone physical keys</Text>
@@ -237,5 +259,35 @@ const styles = StyleSheet.create({
     color: '#71717a',
     fontSize: 14,
     paddingVertical: 8,
+  },
+  selectorRow: {
+    flexDirection: 'row',
+    marginTop: 10,
+    marginBottom: 6,
+    gap: 8,
+  },
+  selectorBtn: {
+    flex: 1,
+    backgroundColor: '#18181b',
+    borderWidth: 1,
+    borderColor: '#27272a',
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  selectorBtnActive: {
+    backgroundColor: '#1e3a8a',
+    borderColor: '#3b82f6',
+  },
+  selectorBtnText: {
+    color: '#a1a1aa',
+    fontSize: 11,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  selectorBtnTextActive: {
+    color: '#ffffff',
   },
 });

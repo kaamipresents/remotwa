@@ -74,7 +74,7 @@ export interface ITransport {
 }
 
 export class ProtocolClient {
-  private transport: ITransport | null = null;
+  private activeTransport: ITransport | null = null;
   private idCounter = 1;
   private pendingRequests = new Map<
     string,
@@ -85,13 +85,13 @@ export class ProtocolClient {
   constructor() {}
 
   public setTransport(transport: ITransport) {
-    this.transport = transport;
-    this.transport.onMessage((raw: string) => this.handleIncomingMessage(raw));
-    this.transport.onClose((reason) => this.handleTransportClosed(reason));
+    this.activeTransport = transport;
+    this.activeTransport.onMessage((raw: string) => this.handleIncomingMessage(raw));
+    this.activeTransport.onClose((reason) => this.handleTransportClosed(reason));
   }
 
   public getTransport(): ITransport | null {
-    return this.transport;
+    return this.activeTransport;
   }
 
   public on(event: string, handler: EventHandler) {
@@ -109,19 +109,19 @@ export class ProtocolClient {
   private dispatchEvent(event: string, data: any) {
     const handlers = this.eventHandlers.get(event);
     if (handlers) {
-      handlers.forEach((h) => {
+      for (const handler of handlers) {
         try {
-          h(data);
+          handler(data);
         } catch (e) {
-          console.error(`[ProtocolClient] Error in event handler for ${event}:`, e);
+          console.error(`[ProtocolClient] Error in event handler for '${event}':`, e);
         }
-      });
+      }
     }
   }
 
-  public sendCommand<T = any>(method: string, payload: any = null, timeoutMs = 5000): Promise<T> {
-    if (!this.transport || !this.transport.isConnected()) {
-      return Promise.reject(new Error('Transport is not connected'));
+  public sendCommand<T = any>(method: string, payload?: any, timeoutMs = 5000): Promise<T> {
+    if (!this.activeTransport || !this.activeTransport.isConnected()) {
+      return Promise.reject(new Error(`Cannot send command '${method}': transport not connected.`));
     }
 
     const id = `c${this.idCounter++}`;
@@ -140,7 +140,7 @@ export class ProtocolClient {
       }, timeoutMs);
 
       this.pendingRequests.set(id, { resolve, reject, timer });
-      this.transport!.send(JSON.stringify(envelope));
+      this.activeTransport!.send(JSON.stringify(envelope));
     });
   }
 

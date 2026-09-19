@@ -76,7 +76,18 @@ public class ProtocolEnvelope
             Payload = payload != null ? JsonSerializer.SerializeToElement(payload) : null
         };
     }
+
+    public static ProtocolEnvelope? FromJson(string json)
+    {
+        return JsonSerializer.Deserialize<ProtocolEnvelope>(json);
+    }
+
+    public string ToJson()
+    {
+        return JsonSerializer.Serialize(this);
+    }
 }
+
 
 public static class ErrorCodes
 {

@@ -2,20 +2,20 @@
 // Implements windows-audio-remote-spec.md Section 5 (Connection Lifecycle)
 
 import { ProtocolClient } from './protocol';
-import { WsTransport, WsConnectionState } from './transports/WsTransport';
+import { WsConnectionState } from './transports/WsTransport';
 import { useAudioStore } from '../store/useAudioStore';
 import { DeviceInfo, useDeviceStore } from '../store/useDeviceStore';
+import { TransportManager } from '../services/TransportManager';
 
 export class ConnectionService {
   private static instance: ConnectionService;
   private client: ProtocolClient;
-  private transport: WsTransport;
   private currentDevice: DeviceInfo | null = null;
 
   private constructor() {
     this.client = new ProtocolClient();
-    this.transport = new WsTransport();
-    this.client.setTransport(this.transport);
+    const tm = TransportManager.getInstance();
+    this.client.setTransport(tm.getWsTransport());
 
     this.setupTransportListeners();
     this.setupProtocolEventListeners();
@@ -33,16 +33,27 @@ export class ConnectionService {
   }
 
   private setupTransportListeners() {
-    this.transport.onStateChange((state: WsConnectionState) => {
+    const wsTransport = TransportManager.getInstance().getWsTransport();
+    const bleTransport = TransportManager.getInstance().getBleTransport();
+
+    wsTransport.onStateChange((state: WsConnectionState) => {
       const deviceStore = useDeviceStore.getState();
 
       if (state === 'connected') {
-        // Authenticate immediately upon socket open
         this.performHandshake();
       } else if (state === 'reconnecting') {
         deviceStore.setConnectionState('reconnecting');
         deviceStore.incrementReconnectCount();
       } else if (state === 'disconnected') {
+        if (deviceStore.activeTransportType === 'wifi') {
+          deviceStore.setConnectionState('idle');
+        }
+      }
+    });
+
+    bleTransport.onClose((reason) => {
+      const deviceStore = useDeviceStore.getState();
+      if (deviceStore.activeTransportType === 'ble') {
         deviceStore.setConnectionState('idle');
       }
     });
@@ -101,11 +112,10 @@ export class ConnectionService {
     deviceStore.setConnectionState('connecting');
     deviceStore.resetReconnectCount();
 
-    const wsUrl = `ws://${device.ip}:${device.port}`;
-    console.log(`[ConnectionService] Connecting to ${wsUrl}...`);
-
     try {
-      await this.transport.connect(wsUrl);
+      await TransportManager.getInstance().connect(this.client, device, () => {
+        this.performHandshake();
+      });
     } catch (err: any) {
       console.error('[ConnectionService] Connection failed:', err.message);
       deviceStore.setConnectionState('idle');
@@ -175,7 +185,7 @@ export class ConnectionService {
   }
 
   public disconnect() {
-    this.transport.disconnect();
+    TransportManager.getInstance().disconnectAll();
     this.currentDevice = null;
     useDeviceStore.getState().setActiveDevice(null);
     useDeviceStore.getState().setConnectionState('idle');

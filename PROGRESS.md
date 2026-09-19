@@ -126,15 +126,18 @@ Overall Progress: [████████████████░░░░]
 
 ### Milestone 5: Bluetooth Low Energy (BLE) Transport
 *Target: Seamless audio remote control without Wi-Fi over BLE GATT.*
-- [ ] Windows WinRT BLE Peripheral (`Transports/BleHost.cs`)
-  - [ ] `GattServiceProvider` setup with custom Remotva Service UUID
-  - [ ] Command (Write), Event (Notify), Control (Read) characteristics
-- [ ] MessagePack serialization and 3-byte chunking protocol
-- [ ] BLE Bandwidth Adaptations (active-only sessions, 96x96 art cap)
-- [ ] Android BLE Central (`src/api/transports/BleTransport.ts`)
-  - [ ] `react-native-ble-plx` integration and Android 12+ runtime permissions
-  - [ ] Chunk reassembly and transmission
-- [ ] Transport Manager & Auto-Fallback (Saved IP -> mDNS -> BLE)
+- [x] Windows WinRT BLE Peripheral (`Transports/BleHost.cs`)
+  - [x] `GattServiceProvider` setup with custom Remotva Service UUID
+  - [x] Command (Write), Event (Notify), Control (Read) characteristics
+  - [x] Bluetooth hardware capability detection and graceful non-blocking fallback
+- [x] MessagePack serialization and 3-byte chunking protocol (`BleChunker.cs` & `BleChunker.ts`, `BleCodec.cs` & `BleCodec.ts`)
+- [x] BLE Bandwidth Adaptations (active-only sessions, 96x96 art cap, 8KB `ERR_TOO_LARGE` guard)
+- [x] Android BLE Central (`src/api/transports/BleTransport.ts`)
+  - [x] `react-native-ble-plx` integration and Android 12+ runtime permissions (`BlePermissions.ts`)
+  - [x] Chunk reassembly, MTU negotiation, and transmission
+- [x] Transport Manager & Auto-Fallback (`services/TransportManager.ts` & `SettingsScreen.tsx`)
+  - [x] Auto mode: Wi-Fi (saved IP / mDNS) with 3s timeout → fallback to BLE GATT
+  - [x] User-selectable pinned transport preference (Auto, Wi-Fi Only, BLE Only)
 
 ---
 
@@ -157,10 +160,19 @@ Overall Progress: [████████████████░░░░]
 | 2026-09-19 | M2 | Mobile Client Integration & Throttling (`tools/test-mobile-logic.js`) | Passed (7/7) | Verified: active PIN pairing exchange, authenticated hello, state snapshot parsing, 50ms slider drag throttling verification (10 fast ticks filtered down to 3 wire sends), and master volume restoration. |
 | 2026-09-20 | M3 | GSMTC Media & Album Art Pipeline (`tools/test-media-art.js`) | Passed (7/7) | Verified: real media snapshot ("O Sahib" by "Adnan Dhool", playing, hasArt), GSMTC transport controls (toggle, next, previous), on-demand 300x300 JPEG 80% album art retrieval (14 KB), and client-side art caching. |
 | 2026-09-20 | M4 | Per-App Audio Mixer & Session Control (`tools/test-mixer.js`) | Passed (6/6) | Verified: live session enumeration (FxSound, msedge, chrome, Todo), process metadata extraction, per-session volume control, per-session mute toggle, real-time `sessionVolumeChanged` event broadcasting, and state restoration. |
+| 2026-09-20 | M5 | BLE GATT Transport, Chunking & Fallback (`tools/test-ble.js`) | Passed (9/9) | Verified: 3-byte chunk framing, 1000-byte split across MTU 185, out-of-order reassembly, 5s partial timeout drop, MessagePack integer key codec, JSON fallback, BLE active-only session filtering, 96x96 art cap + 8KB ERR_TOO_LARGE check, and simulated end-to-end command/response roundtrip. |
 
 ---
 
 ## Changelog
+- **2026-09-20**: Implemented and verified **Milestone 5: Bluetooth Low Energy (BLE) Transport**:
+  - Implemented WinRT `GattServiceProvider` companion peripheral (`BleHost.cs`) with custom Remotva Service UUID (`18377000-7c1a-4d9f-9f3a-7140e4f20837`), Command (Write), Event (Notify), and Control (Read) characteristics.
+  - Implemented 3-byte chunking protocol (`BleChunker.cs`, `BleChunker.ts`) with header `[messageId, chunkIndex, chunkCount]`, MTU fragmentation, and 5-second partial message timeout drop.
+  - Implemented compact MessagePack serialization with integer key mappings (`BleCodec.cs`, `BleCodec.ts`) with transparent UTF-8 JSON fallback.
+  - Enforced BLE bandwidth adaptations: active-only audio session filtering for `getSessions`, 96×96 album art downscaling cap, and 8KB `ERR_TOO_LARGE` guard.
+  - Built mobile `BleTransport.ts` with `react-native-ble-plx`, Android 12+ runtime permission handler (`BlePermissions.ts`), and `TransportManager.ts` auto-fallback orchestrator (Wi-Fi first with 3s timeout → fallback to BLE).
+  - Updated mobile `SettingsScreen.tsx` with 3-way transport selector ('Auto', 'Wi-Fi Only', 'BLE Only') and active transport indicator.
+  - Verified with 9/9 automated tests passing via `tools/test-ble.js`.
 - **2026-09-20**: Implemented and verified **Milestone 4: Per-App Audio Mixer**:
   - Enhanced Windows companion `SessionManager.cs` to bind `IAudioSessionEventsHandler` to each active Windows audio session, tracking real-time volume, mute state, and process details.
   - Implemented dynamic session creation and termination tracking via `IAudioSessionNotification.OnSessionCreated`, broadcasting `sessionsChanged` events.
